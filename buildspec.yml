@@ -4,22 +4,33 @@ phases:
   install:
     runtime-versions:
       dotnet: 8.0
+      docker: 20
     commands:
-      - echo Installing .NET dependencies...
+      - echo Installing dependencies...
   pre_build:
     commands:
-      - echo Restoring NuGet packages...
-      - dotnet restore MyAwsApi.csproj
+      - echo Logging in to Amazon ECR...
+      - aws --version      
+      - aws ecr get-login-password --region ap-southeast-1 | docker login --username AWS --password-stdin 111091141173.dkr.ecr.ap-southeast-1.amazonaws.com
+      # Set your ECR repo URI below
+      - REPOSITORY_URI=111091141173.dkr.ecr.ap-southeast-1.amazonaws.com/my-api-cicd
+      - IMAGE_TAG=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
   build:
     commands:
-      - echo Building the project...
-      - dotnet build MyAwsApi.csproj -c Release --no-restore
-      - echo Publishing the project...
-      - dotnet publish MyAwsApi.csproj -c Release -o ./publish --no-build
+      - echo Building the .NET project...
+      - dotnet restore MyAwsApi.csproj
+      - dotnet publish MyAwsApi.csproj -c Release -o ./publish
+      - echo Building the Docker image...
+      - docker build -t $REPOSITORY_URI:latest .
+      - docker tag $REPOSITORY_URI:latest $REPOSITORY_URI:$IMAGE_TAG
   post_build:
     commands:
-      - echo Build and publish completed.
+      - echo Pushing the Docker images...
+      - docker push $REPOSITORY_URI:latest
+      - docker push $REPOSITORY_URI:$IMAGE_TAG
+      - echo Writing image definitions file...
+      - printf '[{"name":"container-name","imageUri":"%s"}]' $REPOSITORY_URI:$IMAGE_TAG > imagedefinitions.json
 
 artifacts:
   files:
-    - publish/**/*
+    - imagedefinitions.json
