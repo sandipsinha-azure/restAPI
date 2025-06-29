@@ -1,0 +1,25 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      dotnet: 8.0
+    commands:
+      - echo Installing .NET dependencies...
+  pre_build:
+    commands:
+      - echo Restoring NuGet packages...
+      - dotnet restore MyAwsApi.csproj
+  build:
+    commands:
+      - echo Building the project...
+      - dotnet build MyAwsApi.csproj -c Release --no-restore
+      - echo Publishing the project...
+      - dotnet publish MyAwsApi.csproj -c Release -o ./publish --no-build
+  post_build:
+    commands:
+      - echo Build and publish completed.
+
+artifacts:
+  files:
+    - publish/**/*
