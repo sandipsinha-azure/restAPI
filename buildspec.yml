@@ -5,9 +5,8 @@ phases:
     runtime-versions:
       dotnet: 8.0
     commands:
-      - echo "Installing Docker..."
-      - curl -fsSL https://get.docker.com | sh  # Only needed if Docker isn't pre-installed
-      - docker --version
+      - echo "Checking Docker..."
+      - docker --version || echo "Docker not found"
   pre_build:
     commands:
       - echo "Logging in to Amazon ECR..."
@@ -16,7 +15,7 @@ phases:
       - IMAGE_TAG=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
   build:
     commands:
-      - echo "Building the .NET project..."
+      - echo "Building .NET project..."
       - dotnet restore MyAwsApi.csproj
       - dotnet publish MyAwsApi.csproj -c Release -o ./publish
       - echo "Building Docker image..."
@@ -24,10 +23,8 @@ phases:
       - docker tag $REPOSITORY_URI:latest $REPOSITORY_URI:$IMAGE_TAG
   post_build:
     commands:
-      - echo "Pushing Docker images..."
       - docker push $REPOSITORY_URI:latest
       - docker push $REPOSITORY_URI:$IMAGE_TAG
-      - echo "Writing image definitions file..."
       - printf '[{"name":"container-name","imageUri":"%s"}]' $REPOSITORY_URI:$IMAGE_TAG > imagedefinitions.json
 
 artifacts:
